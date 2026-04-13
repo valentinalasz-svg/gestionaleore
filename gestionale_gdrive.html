@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Gestionale Ore</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://accounts.google.com/gsi/client" async></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans','Nunito',system-ui,sans-serif;background:linear-gradient(145deg,#0f1117 0%,#1a1d2e 50%,#0f1117 100%);color:#e8e6e3}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+input,select,textarea,button{font-family:inherit}
+
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+
+/* Header */
+.header{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;background:rgba(15,17,23,.85);backdrop-filter:blur(12px);flex-shrink:0;z-index:50}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-icon{width:30px;height:30px;border-radius:7px;background:linear-gradient(135deg,#4a6cf7,#7c5cf7);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:#fff}
+.logo-text{font-size:14px;font-weight:600;letter-spacing:-.02em}
+nav{display:flex;gap:3px}
+.tab-btn{transition:all .2s;cursor:pointer;border:none;background:none;color:#666;padding:8px 12px;border-radius:8px;display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500;white-space:nowrap}
+.tab-btn:hover{color:#aaa;background:rgba(255,255,255,.05)}
+.tab-btn.active{color:#e8e6e3;background:rgba(255,255,255,.1)}
+.tab-btn svg{width:16px;height:16px}
+.tab-label{display:none}
+
+/* Content */
+.content{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px}
+
+/* Buttons */
+.btn{padding:7px 14px;border-radius:7px;border:none;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;font-family:inherit;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#4a6cf7;color:#fff}
+.btn-primary:hover{background:#5b7cf8}
+.btn-danger{background:#e74c4c;color:#fff}
+.btn-danger:hover{background:#f05555}
+.btn-ghost{background:transparent;color:#999;border:1px solid rgba(255,255,255,.1)}
+.btn-ghost:hover{background:rgba(255,255,255,.05);color:#ccc}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-icon{padding:5px;min-width:28px;justify-content:center}
+
+/* Input */
+.input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:7px 10px;color:#e8e6e3;font-size:13px;width:100%;outline:none;transition:border-color .15s}
+.input:focus{border-color:#4a6cf7}
+.input::placeholder{color:#555}
+
+/* Modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:center;justify-content:center;padding:12px}
+.modal{background:#1e2030;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;max-width:400px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,.4)}
+
+/* Calendar grid */
+.cal-wrap{overflow-x:auto}
+.cal-grid{display:grid;gap:1px;background:rgba(255,255,255,.03);border-radius:10px;overflow:hidden;border:1px solid rgba(255,255,255,.06)}
+.cal-header{padding:8px 6px;font-size:11px;font-weight:600;background:#14161f;text-align:center;color:#bbb}
+.cal-header.today{background:rgba(74,108,247,.1);color:#7c9cff}
+.cal-header .day-label{font-size:9px;font-weight:400;color:#555;margin-bottom:1px}
+.cal-time{padding:3px 5px;font-size:9px;color:#555;font-family:'JetBrains Mono',monospace;background:#14161f;display:flex;align-items:center;justify-content:center}
+.cal-time.hour{color:#888;font-weight:500;border-top:1px solid rgba(255,255,255,.04)}
+.slot{padding:2px 5px;min-height:26px;background:#16181f;border-left:3px solid transparent;cursor:pointer;transition:all .12s;display:flex;align-items:center;gap:3px;position:relative}
+.slot:hover{background:rgba(255,255,255,.04);transform:scale(1.01);z-index:2}
+.slot.filled{border-left-width:3px}
+.slot.cancelled{opacity:.35}
+.slot.cancelled .slot-name{text-decoration:line-through}
+.slot.today-bg{background:rgba(74,108,247,.03)}
+.slot.hour-border{border-top:1px solid rgba(255,255,255,.04)}
+.slot-name{font-size:10px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.slot-logged{width:14px;height:14px;border-radius:3px;border:1.5px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer;transition:all .15s}
+.slot-logged:hover{border-color:rgba(255,255,255,.4)}
+.slot-logged.checked{background:#4ade80;border-color:#4ade80}
+.slot-logged.checked svg{opacity:1}
+.slot-logged svg{opacity:0;width:10px;height:10px}
+
+/* Week nav */
+.week-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px}
+.week-nav h2{font-size:14px;font-weight:600;letter-spacing:-.02em}
+.week-arrows{display:flex;align-items:center;gap:4px}
+
+/* Mobile day tabs */
+.day-tabs{display:flex;gap:3px;margin-bottom:10px;overflow-x:auto;padding-bottom:3px}
+.day-tab{flex:0 0 auto;padding:6px 10px;border-radius:8px;border:none;background:rgba(255,255,255,.04);color:#777;font-size:11px;cursor:pointer;font-family:inherit;text-align:center;transition:all .15s}
+.day-tab.active{background:rgba(74,108,247,.2);color:#7c9cff;font-weight:600}
+.day-tab.is-today{color:#4a6cf7}
+.day-tab .day-num{font-size:15px;font-weight:600;margin-top:1px}
+
+/* Student list */
+.student-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:8px;overflow:hidden;margin-bottom:4px}
+.student-row{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer;transition:background .1s}
+.student-row:hover{background:rgba(255,255,255,.04)}
+.avatar{border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0}
+
+/* Stat cards */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:14px;border-top:3px solid var(--accent)}
+.stat-label{font-size:10px;color:#666;margin-bottom:4px}
+.stat-value{font-size:22px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent)}
+
+/* Bonus */
+.bonus-card{border-radius:10px;padding:16px;margin-bottom:16px}
+
+/* Picker item */
+.picker-item{display:flex;align-items:center;gap:9px;padding:9px 10px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:7px;cursor:pointer;width:100%;text-align:left;color:#e8e6e3;transition:all .1s;font-family:inherit;font-size:13px;margin-bottom:2px}
+.picker-item:hover{background:rgba(255,255,255,.08)}
+
+/* Extra work */
+.extra-row{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:7px;margin-bottom:3px}
+
+/* Registration count */
+.reg-count{display:flex;align-items:center;gap:4px;font-size:11px;font-family:'JetBrains Mono',monospace;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.04)}
+
+/* Student detail in modal */
+.detail-row{font-size:12px;color:#aaa;margin-bottom:6px}
+.detail-row span{color:#666}
+.meet-link{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;background:rgba(74,108,247,.15);color:#7c9cff;border-radius:7px;text-decoration:none;font-size:12px;font-weight:500;margin:10px 0;transition:background .15s}
+.meet-link:hover{background:rgba(74,108,247,.25)}
+.modal-actions{display:flex;gap:6px;margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:14px}
+
+/* Sync status */
+.sync-status{display:flex;align-items:center;gap:5px;font-size:11px;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0}
+.sync-status:hover{background:rgba(255,255,255,.08)}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sync-dot.ok{background:#4ade80}
+.sync-dot.syncing{background:#f0a050;animation:pulse .8s ease-in-out infinite}
+.sync-dot.error{background:#e74c4c}
+.sync-dot.offline{background:#666}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* Responsive */
+@media(min-width:768px){
+  .tab-label{display:inline}
+  .content{padding:16px 20px}
+  .logo-text-hide{display:inline}
+  .stat-grid{grid-template-columns:repeat(4,1fr)}
+  .cal-grid.desktop{min-width:780px}
+  .week-nav h2{font-size:16px}
+}
+@media(max-width:767px){
+  .logo-text{display:none}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+<script type="text/babel">
+const { useState, useEffect, useMemo, useCallback } = React;
+
+// ── Data ──
+/*
+  ══════════════════════════════════════════════════════════════════
+  SETUP GOOGLE DRIVE SYNC — da fare una volta sola (5 minuti)
+  ══════════════════════════════════════════════════════════════════
+  1. Vai su https://console.cloud.google.com
+  2. Crea un nuovo progetto (es. "Gestionale Ore")
+  3. Vai su "API e servizi" → "Libreria" → cerca "Google Drive API" → Attiva
+  4. Vai su "API e servizi" → "Credenziali" → "Crea credenziali" → "ID client OAuth"
+  5. Tipo applicazione: "Applicazione web"
+  6. In "Origini JavaScript autorizzate" aggiungi l'URL da cui apri il file
+     (es. https://tuonome.github.io oppure http://localhost:8080)
+  7. Copia l'ID client e incollalo qui sotto dove c'è IL_TUO_CLIENT_ID
+  8. Vai su "Schermata consenso OAuth" → aggiungi la tua email come "Utente di test"
+  ══════════════════════════════════════════════════════════════════
+*/
+const INIT_STUDENTS=[
+{id:1,family:"Pambieri/Pizzamiglio",name:"Carlotta",meet:"https://meet.google.com/vgv-bhfg-jat",subjects:"Latino",rate:16},
+{id:2,family:"Palomba/Cozzi",name:"Denis",meet:"https://meet.google.com/vgv-bhfg-jat",subjects:"Matematica, fisica",rate:16},
+{id:3,family:"Galli/Livoti",name:"Diana",meet:"https://meet.google.com/ubw-qkdw-zim",subjects:"Italiano, latino",rate:14},
+{id:4,family:"Galli/Livoti",name:"Diana C.",meet:"https://meet.google.com/ubw-qkdw-zim",subjects:"Coordinamento",rate:17},
+{id:5,family:"Garagiola",name:"Diego",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"",rate:15},
+{id:6,family:"",name:"Elena",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Inglese",rate:25},
+{id:7,family:"Cuccurella",name:"Eleonora",meet:"https://meet.google.com/ffr-qook-wwc",subjects:"Aiuto compiti",rate:15},
+{id:8,family:"Coppola",name:"Elia",meet:"https://meet.google.com/xbt-wery-gbw",subjects:"Matematica, fisica",rate:15},
+{id:9,family:"",name:"Emanuele",meet:"https://meet.google.com/auz-pwht-ees",subjects:"",rate:15},
+{id:10,family:"Giusti/Grassi",name:"Emma",meet:"https://meet.google.com/auz-pwht-ees",subjects:"Italiano, storia, diritto, DTA",rate:15},
+{id:11,family:"",name:"Erica",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Stesura tesi",rate:21},
+{id:12,family:"Bonnanni/Maccioni",name:"Federico",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Inglese",rate:25},
+{id:13,family:"Galdiolo",name:"Giorgia",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Aiuto compiti",rate:15},
+{id:14,family:"",name:"Homeschooling",meet:"",subjects:"",rate:15.25},
+{id:15,family:"Theron",name:"Inge",meet:"https://meet.google.com/tkg-oeos-sdt",subjects:"Italiano L2",rate:25},
+{id:16,family:"Passarella/Di Siervi",name:"Ludovico",meet:"https://meet.google.com/hcs-axyw-pmw",subjects:"Matematica, fisica, chimica",rate:15},
+{id:17,family:"Marrone",name:"Manlio",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Analisi, fisica, geom/alg",rate:21},
+{id:18,family:"",name:"Marco",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Inglese",rate:15},
+{id:19,family:"Giorgi",name:"Martina",meet:"https://meet.google.com/qom-fopo-zvc",subjects:"Scienze, tedesco, filosofia",rate:16},
+{id:20,family:"Righetti",name:"Marzio",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Matematica, fisica",rate:15},
+{id:21,family:"Villa",name:"Matilde",meet:"https://meet.google.com/pcv-ywcn-hwj",subjects:"Coordinamento",rate:17},
+{id:22,family:"Puntillo/Rinaldi",name:"Matteo",meet:"https://meet.google.com/pmv-ouph-hoc",subjects:"Matematica, fisica",rate:15},
+{id:23,family:"Nizzola/Bonacina",name:"Maty",meet:"https://meet.google.com/mdg-oxao-ypq",subjects:"Economia, diritto",rate:15},
+{id:24,family:"Buccolo",name:"Melissa",meet:"https://meet.google.com/njw-bapx-uzu",subjects:"Inglese, matematica",rate:16},
+{id:25,family:"Musso",name:"Miriam",meet:"",subjects:"Coordinamento",rate:17},
+{id:26,family:"",name:"Niccolò",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Matematica",rate:21},
+{id:27,family:"Khaldi",name:"Rahma",meet:"",subjects:"Matematica",rate:14},
+{id:28,family:"",name:"Silvia",meet:"https://meet.google.com/xbt-wery-gbw",subjects:"Economia",rate:15},
+{id:29,family:"",name:"Silvio",meet:"https://meet.google.com/xbt-wery-gbw",subjects:"Matematica",rate:15},
+{id:30,family:"Rodella",name:"Simona",meet:"https://meet.google.com/tkg-oeos-sdt",subjects:"Matematica, fisica",rate:15},
+{id:31,family:"Bianchi",name:"Sofia",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Francese",rate:15},
+{id:32,family:"Demurtas",name:"Sofy",meet:"https://meet.google.com/auz-pwht-ees",subjects:"Fisica",rate:15},
+{id:33,family:"",name:"Teodoro",meet:"https://meet.google.com/miv-usaa-fhm",subjects:"Inglese",rate:13.5},
+{id:34,family:"Olmo",name:"Tommaso",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Matematica, fisica",rate:15},
+{id:35,family:"",name:"Tommy",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Chimica, scienze",rate:15},
+{id:36,family:"",name:"Fede",meet:"https://meet.google.com/tkg-oeos-sdt",subjects:"Matematica",rate:15},
+{id:37,family:"",name:"Francesco",meet:"https://meet.google.com/ffr-qook-wwc",subjects:"Fisica",rate:21},
+{id:38,family:"",name:"Leonardo",meet:"https://meet.google.com/ffr-qook-wwc",subjects:"Chimica",rate:15},
+{id:39,family:"",name:"Antonio",meet:"https://meet.google.com/ffr-qook-wwc",subjects:"Test ingresso uni",rate:17},
+{id:40,family:"",name:"Alice",meet:"https://meet.google.com/ffr-qook-wwc",subjects:"Economia",rate:15},
+{id:41,family:"",name:"Nicolò",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Meccanica",rate:15},
+{id:42,family:"",name:"Gabriele",meet:"https://meet.google.com/djs-eqwm-oxp",subjects:"Economia",rate:15},
+{id:43,family:"Mondin",name:"Giulia",meet:"",subjects:"",rate:16},
+];
+
+const COLORS=["#E8D5B7","#B7D5E8","#D5E8B7","#E8B7D5","#B7E8D5","#D5B7E8","#E8C9B7","#B7E8C9","#C9B7E8","#E8E0B7","#B7C9E8","#C9E8B7","#E8B7C9","#B7E8E0","#E0B7E8","#D1C4A0","#A0C4D1","#C4D1A0","#D1A0C4","#A0D1C4","#E2CBB0","#B0CBE2","#CBE2B0","#E2B0CB","#B0E2CB","#D8C0A8","#A8C0D8","#C0D8A8","#D8A8C0","#A8D8C0","#CCBB99","#99BBCC","#BBCC99","#CC99BB","#99CCBB","#DDC8AA","#AAC8DD","#C8DDAA","#DDAAC8","#AADDC8","#E5D4BC","#BCD4E5","#D4E5BC"];
+const DAYS=["Lun","Mar","Mer","Gio","Ven","Sab","Dom"];
+const DAYS_F=["Lunedì","Martedì","Mercoledì","Giovedì","Venerdì","Sabato","Domenica"];
+const MONTHS=["Gennaio","Febbraio","Marzo","Aprile","Maggio","Giugno","Luglio","Agosto","Settembre","Ottobre","Novembre","Dicembre"];
+const HOURS=[];
+for(let h=8;h<=21;h++){HOURS.push(`${String(h).padStart(2,"0")}:00`);if(h<21)HOURS.push(`${String(h).padStart(2,"0")}:30`)}
+
+function getMonday(d){const dt=new Date(d);const day=dt.getDay();dt.setDate(dt.getDate()-day+(day===0?-6:1));dt.setHours(0,0,0,0);return dt}
+function dk(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function addD(d,n){const r=new Date(d);r.setDate(r.getDate()+n);return r}
+function color(id){return COLORS[(id-1)%COLORS.length]}
+
+// localStorage helpers (cache locale)
+function load(k,fb){try{const v=localStorage.getItem("go_"+k);return v?JSON.parse(v):fb}catch{return fb}}
+function save(k,v){try{localStorage.setItem("go_"+k,JSON.stringify(v))}catch(e){console.error(e)}}
+
+// ── Google Drive Sync ──
+const GDRIVE = (() => {
+  const CLIENT_ID = 'IL_TUO_CLIENT_ID_QUI'; // ← sostituisci con il tuo Client ID Google
+  const SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
+  const FILE_NAME = 'gestionale_data.json';
+  let tokenClient = null;
+  let accessToken = null;
+  let fileId = null;
+  let onStatusChange = null;
+  let saveTimer = null;
+
+  function setStatus(s){ onStatusChange && onStatusChange(s) }
+
+  function initTokenClient(callback){
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPE,
+      callback: (resp) => {
+        if(resp.error){ setStatus('error'); return; }
+        accessToken = resp.access_token;
+        save('gdrive_token', accessToken);
+        callback && callback();
+      }
+    });
+  }
+
+  async function findFile(){
+    const r = await fetch(
+      "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D%27gestionale_data.json%27&fields=files(id)",
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if(!r.ok) throw new Error('find failed');
+    const d = await r.json();
+    return d.files?.[0]?.id || null;
+  }
+
+  async function readFile(id){
+    const r = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${id}?alt=media`,
+      { headers: { Authorization: 'Bearer ' + accessToken } }
+    );
+    if(!r.ok) throw new Error('read failed');
+    return await r.json();
+  }
+
+  async function writeFile(id, data){
+    const body = JSON.stringify(data);
+    const url = id
+      ? `https://www.googleapis.com/upload/drive/v3/files/${id}?uploadType=media`
+      : `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart`;
+
+    if(id){
+      const r = await fetch(url, {
+        method: 'PATCH',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body
+      });
+      if(!r.ok) throw new Error('write failed');
+      return id;
+    } else {
+      const meta = JSON.stringify({ name: FILE_NAME, parents: ['appDataFolder'] });
+      const form = new FormData();
+      form.append('metadata', new Blob([meta], { type: 'application/json' }));
+      form.append('media', new Blob([body], { type: 'application/json' }));
+      const r2 = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken },
+        body: form
+      });
+      if(!r2.ok) throw new Error('create failed');
+      const d = await r2.json();
+      return d.id;
+    }
+  }
+
+  return {
+    onStatus(cb){ onStatusChange = cb },
+
+    async connect(){
+      return new Promise((resolve) => {
+        if(!window.google){ setStatus('error'); resolve(false); return; }
+        initTokenClient(async () => {
+          setStatus('syncing');
+          try {
+            fileId = await findFile();
+            if(fileId){
+              const remote = await readFile(fileId);
+              setStatus('ok');
+              resolve({ remote, isNew: false });
+            } else {
+              setStatus('ok');
+              resolve({ remote: null, isNew: true });
+            }
+          } catch(e){ setStatus('error'); resolve(false); }
+        });
+        tokenClient.requestAccessToken({ prompt: '' });
+      });
+    },
+
+    async save(data){
+      if(!accessToken){ save('pending_sync', data); return; }
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(async () => {
+        setStatus('syncing');
+        try {
+          fileId = await writeFile(fileId, data);
+          setStatus('ok');
+        } catch(e){
+          // Token scaduto → richiedi silenzioso
+          initTokenClient(async () => {
+            try { fileId = await writeFile(fileId, data); setStatus('ok'); }
+            catch { setStatus('error'); }
+          });
+          tokenClient.requestAccessToken({ prompt: '' });
+        }
+      }, 1200);
+    },
+
+    isConnected(){ return !!accessToken }
+  };
+})();
+
+// SVG icons as strings
+const IC={
+  cal:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`,
+  users:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  chart:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>`,
+  brief:`<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>`,
+  left:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>`,
+  right:`<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>`,
+  plus:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`,
+  x:`<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  vid:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>`,
+  trash:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`,
+  edit:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`,
+  check:`<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#1a1d2e" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  clock:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+  server:`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"/><rect x="2" y="14" width="20" height="8" rx="2" ry="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>`,
+};
+function Ic({name,size}){return <span dangerouslySetInnerHTML={{__html:IC[name]}} style={{display:"inline-flex",alignItems:"center"}} />}
+
+// ── App ──
+function App(){
+  const [tab,setTab]=useState("calendar");
+  const [students,setStudents]=useState(()=>load("students",INIT_STUDENTS));
+  const [lessons,setLessons]=useState(()=>load("lessons",{}));
+  const [extraWork,setExtraWork]=useState(()=>load("extraWork",{}));
+  const [week,setWeek]=useState(getMonday(new Date()));
+  const [selSlot,setSelSlot]=useState(null);
+  const [picker,setPicker]=useState(false);
+  const [search,setSearch]=useState("");
+  const [editStu,setEditStu]=useState(null);
+  const [stuForm,setStuForm]=useState({});
+  const [sumMonth,setSumMonth]=useState({y:new Date().getFullYear(),m:new Date().getMonth()});
+  const [detail,setDetail]=useState(null);
+  const [newExtra,setNewExtra]=useState({date:"",hours:"",note:""});
+  const [mobDay,setMobDay]=useState(new Date().getDay()===0?6:new Date().getDay()-1);
+  const [isMob,setIsMob]=useState(window.innerWidth<768);
+  const [syncStatus,setSyncStatus]=useState("offline");
+
+  // Refs for Drive save (always latest state)
+  const studentsRef=React.useRef(students);
+  const lessonsRef=React.useRef(lessons);
+  const extraRef=React.useRef(extraWork);
+  useEffect(()=>{studentsRef.current=students},[students]);
+  useEffect(()=>{lessonsRef.current=lessons},[lessons]);
+  useEffect(()=>{extraRef.current=extraWork},[extraWork]);
+
+  const driveSync=(stu,les,ext)=>{
+    const s=stu||studentsRef.current;
+    const l=les||lessonsRef.current;
+    const e=ext||extraRef.current;
+    GDRIVE.save({students:s,lessons:l,extraWork:e});
+  };
+
+  // Init Drive on mount
+  useEffect(()=>{
+    GDRIVE.onStatus(setSyncStatus);
+    const tryConnect=async()=>{
+      const result=await GDRIVE.connect();
+      if(!result)return;
+      if(result.remote){
+        const r=result.remote;
+        if(r.students){setStudents(r.students);save("students",r.students);}
+        if(r.lessons){setLessons(r.lessons);save("lessons",r.lessons);}
+        if(r.extraWork){setExtraWork(r.extraWork);save("extraWork",r.extraWork);}
+      } else {
+        driveSync(students,lessons,extraWork);
+      }
+    };
+    let attempts=0;
+    const poll=setInterval(()=>{
+      attempts++;
+      if(window.google?.accounts?.oauth2){clearInterval(poll);tryConnect();}
+      if(attempts>50)clearInterval(poll);
+    },300);
+    return()=>clearInterval(poll);
+  },[]);
+
+  useEffect(()=>{const h=()=>setIsMob(window.innerWidth<768);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h)},[]);
+
+  // localStorage + Drive sync on every change
+  useEffect(()=>{save("students",students);driveSync(students,null,null)},[students]);
+  useEffect(()=>{save("lessons",lessons);driveSync(null,lessons,null)},[lessons]);
+  useEffect(()=>{save("extraWork",extraWork);driveSync(null,null,extraWork)},[extraWork]);
+
+  const weekDates=useMemo(()=>Array.from({length:7},(_,i)=>addD(week,i)),[week]);
+  const today=dk(new Date());
+  const lk=(d,t)=>`${dk(d)}_${t}`;
+  const getL=(d,t)=>lessons[lk(d,t)]||null;
+  const getS=(id)=>students.find(s=>s.id===id);
+
+  const addLesson=(sid)=>{
+    if(!selSlot)return;
+    setLessons(p=>({...p,[lk(selSlot.date,selSlot.time)]:{studentId:sid,cancelled:false,logged:false}}));
+    setPicker(false);setSelSlot(null);setSearch("");
+  };
+  const removeLesson=(d,t)=>{setLessons(p=>{const n={...p};delete n[lk(d,t)];return n});setDetail(null)};
+  const toggleCancel=(d,t)=>{const k=lk(d,t);setLessons(p=>({...p,[k]:{...p[k],cancelled:!p[k]?.cancelled}}))};
+  const toggleLogged=(d,t,e)=>{
+    if(e){e.stopPropagation();e.preventDefault()}
+    const k=lk(d,t);
+    if(!lessons[k])return;
+    setLessons(p=>({...p,[k]:{...p[k],logged:!p[k]?.logged}}));
+  };
+  const handleSlotClick=(d,t)=>{const l=getL(d,t);if(l)setDetail({date:d,time:t,lesson:l});else{setSelSlot({date:d,time:t});setPicker(true)}};
+
+  const filteredStu=students.filter(s=>s.name.toLowerCase().includes(search.toLowerCase())||s.family.toLowerCase().includes(search.toLowerCase())||s.subjects.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.name.localeCompare(b.name));
+
+  // Monthly summary
+  // Billing period: 28 of previous month → 27 of selected month
+  const billingRange=useMemo(()=>{
+    // "Febbraio 2026" means billing 28 Jan 2026 → 27 Feb 2026
+    const start=new Date(sumMonth.m===0?sumMonth.y-1:sumMonth.y, sumMonth.m===0?11:sumMonth.m-1, 28);
+    const end=new Date(sumMonth.y, sumMonth.m, 27, 23, 59, 59);
+    return{start,end};
+  },[sumMonth]);
+  const billingLabel=useMemo(()=>{
+    const s=billingRange.start;const e=billingRange.end;
+    return `${s.getDate()} ${MONTHS[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MONTHS[e.getMonth()].slice(0,3)} ${e.getFullYear()}`;
+  },[billingRange]);
+
+  const summary=useMemo(()=>{
+    const{start,end}=billingRange;
+    let slots=0,cancelled=0,logged=0;const uStu=new Set();const sSlots={};let earnings=0;
+    Object.entries(lessons).forEach(([k,l])=>{
+      const[dp]=k.split("_");const[y,m,d]=dp.split("-").map(Number);const ld=new Date(y,m-1,d);
+      if(ld>=start&&ld<=end){
+        if(l.cancelled){cancelled++}
+        else{
+          slots++;uStu.add(l.studentId);sSlots[l.studentId]=(sSlots[l.studentId]||0)+1;
+          if(l.logged)logged++;
+          const st=getS(l.studentId);if(st)earnings+=st.rate*0.5;
+        }
+      }
+    });
+    const hrs=slots*.5;const nCli=uStu.size;const bonus=hrs>=60&&nCli>=6;const bAmt=bonus?hrs*.5:0;
+    let extraH=0;let extraEarn=0;
+    Object.entries(extraWork).forEach(([ds,entries])=>{
+      const[y,m,d]=ds.split("-").map(Number);const ed=new Date(y,m-1,d);
+      if(ed>=start&&ed<=end) entries.forEach(e=>{const h=parseFloat(e.hours)||0;extraH+=h;extraEarn+=h*(parseFloat(e.rate)||0)});
+    });
+    return{slots,hrs,cancelled,nCli,bonus,bAmt,sSlots,extraH,logged,earnings,extraEarn,totalEarn:earnings+bAmt};
+  },[lessons,extraWork,billingRange]);
+
+  // Week registration count
+  const weekLogInfo=useMemo(()=>{
+    let total=0,logged=0;
+    weekDates.forEach(d=>{HOURS.forEach(t=>{const l=getL(d,t);if(l&&!l.cancelled){total++;if(l.logged)logged++}})});
+    return{total,logged};
+  },[weekDates,lessons]);
+
+  const weekLabel=useMemo(()=>{const s=weekDates[0],e=weekDates[6];return s.getMonth()===e.getMonth()?`${s.getDate()}–${e.getDate()} ${MONTHS[s.getMonth()]} ${s.getFullYear()}`:`${s.getDate()} ${MONTHS[s.getMonth()].slice(0,3)} – ${e.getDate()} ${MONTHS[e.getMonth()].slice(0,3)} ${s.getFullYear()}`},[weekDates]);
+
+  // Student editing
+  const startEdit=(s)=>{setEditStu(s.id);setStuForm({...s})};
+  const saveStu=()=>{setStudents(p=>p.map(s=>s.id===editStu?{...stuForm,id:editStu}:s));setEditStu(null)};
+  const addStu=()=>{const nid=Math.max(...students.map(s=>s.id),0)+1;const ns={id:nid,family:"",name:"",meet:"",subjects:"",rate:15};setStudents(p=>[...p,ns]);startEdit(ns)};
+  const delStu=(id)=>{setStudents(p=>p.filter(s=>s.id!==id));if(editStu===id)setEditStu(null)};
+
+  // Extra work
+  const addExtra=()=>{if(!newExtra.date||!newExtra.hours)return;const k=newExtra.date;setExtraWork(p=>({...p,[k]:[...(p[k]||[]),{hours:newExtra.hours,note:newExtra.note}]}));setNewExtra({date:"",hours:"",note:""})};
+  const rmExtra=(ds,i)=>{setExtraWork(p=>{const e=[...(p[ds]||[])];e.splice(i,1);if(!e.length){const n={...p};delete n[ds];return n}return{...p,[ds]:e}})};
+
+  return(
+  <div id="app">
+    {/* Header */}
+    <div className="header">
+      <div className="logo">
+        <div className="logo-icon">G</div>
+        <span className="logo-text">Gestionale Ore</span>
+      </div>
+      <nav>
+        <button className={`tab-btn ${tab==="calendar"?"active":""}`} onClick={()=>setTab("calendar")}><Ic name="cal"/><span className="tab-label">Calendario</span></button>
+        <button className={`tab-btn ${tab==="students"?"active":""}`} onClick={()=>setTab("students")}><Ic name="users"/><span className="tab-label">Studenti</span></button>
+        <button className={`tab-btn ${tab==="extra"?"active":""}`} onClick={()=>setTab("extra")}><Ic name="brief"/><span className="tab-label">Altro</span></button>
+        <button className={`tab-btn ${tab==="summary"?"active":""}`} onClick={()=>setTab("summary")}><Ic name="chart"/><span className="tab-label">Riepilogo</span></button>
+      </nav>
+      <div className="sync-status" title={{ok:"Sincronizzato con Google Drive",syncing:"Salvataggio in corso...",error:"Errore di sincronizzazione — clicca per riprovare",offline:"Non collegato a Google Drive"}[syncStatus]}
+        onClick={()=>syncStatus==="offline"||syncStatus==="error"?GDRIVE.connect().then(r=>{if(r?.remote){if(r.remote.students)setStudents(r.remote.students);if(r.remote.lessons)setLessons(r.remote.lessons);if(r.remote.extraWork)setExtraWork(r.remote.extraWork)}}):null}>
+        <div className={`sync-dot ${syncStatus}`}/>
+        <span style={{color:{ok:"#4ade80",syncing:"#f0a050",error:"#e74c4c",offline:"#666"}[syncStatus]}}>
+          {{ok:"Drive",syncing:"...",error:"Errore",offline:"Offline"}[syncStatus]}
+        </span>
+      </div>
+    </div>
+
+    <div className="content">
+
+    {/* ═══ CALENDAR ═══ */}
+    {tab==="calendar"&&<div>
+      <div className="week-nav">
+        <div className="week-arrows">
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>setWeek(addD(week,-7))}><Ic name="left"/></button>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>setWeek(addD(week,7))}><Ic name="right"/></button>
+          <h2>{weekLabel}</h2>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          <div className="reg-count" title="Ore registrate sul server questa settimana">
+            <Ic name="server"/>
+            <span style={{color:weekLogInfo.logged===weekLogInfo.total&&weekLogInfo.total>0?"#4ade80":"#888"}}>
+              {weekLogInfo.logged}/{weekLogInfo.total}
+            </span>
+          </div>
+          <button className="btn btn-ghost btn-sm" onClick={()=>{setWeek(getMonday(new Date()));setMobDay(new Date().getDay()===0?6:new Date().getDay()-1)}}>Oggi</button>
+        </div>
+      </div>
+
+      {/* Mobile day tabs */}
+      {isMob&&<div className="day-tabs">
+        {weekDates.map((d,i)=><button key={i} className={`day-tab ${mobDay===i?"active":""} ${dk(d)===today?"is-today":""}`} onClick={()=>setMobDay(i)}>
+          <div>{DAYS[i]}</div><div className="day-num">{d.getDate()}</div>
+        </button>)}
+      </div>}
+
+      <div className="cal-wrap">
+        <div className={`cal-grid ${isMob?"":"desktop"}`} style={{gridTemplateColumns:isMob?"50px 1fr":`50px repeat(7,1fr)`}}>
+          {/* Header */}
+          <div className="cal-header" style={{fontSize:9,color:"#555"}}>Ora</div>
+          {isMob?
+            <div className={`cal-header ${dk(weekDates[mobDay])===today?"today":""}`}>{DAYS_F[mobDay]} {weekDates[mobDay].getDate()}</div>
+          :weekDates.map((d,i)=><div key={i} className={`cal-header ${dk(d)===today?"today":""}`}>
+            <div className="day-label">{DAYS[i]}</div>{d.getDate()}
+          </div>)}
+
+          {/* Slots */}
+          {HOURS.map(time=>{
+            const isHr=time.endsWith(":00");
+            return <React.Fragment key={time}>
+              <div className={`cal-time ${isHr?"hour":""}`}>{time}</div>
+              {(isMob?[mobDay]:[0,1,2,3,4,5,6]).map(di=>{
+                const d=weekDates[di];const l=getL(d,time);const s=l?getS(l.studentId):null;const c=s?color(s.id):null;const isT=dk(d)===today;
+                return <div key={di}
+                  className={`slot ${l?"filled":""} ${l?.cancelled?"cancelled":""} ${isT&&!l?"today-bg":""} ${isHr?"hour-border":""}`}
+                  style={l?{background:`${c}15`,borderLeftColor:c}:{}}
+                  onClick={()=>handleSlotClick(d,time)}>
+                  {s&&<span className="slot-name" style={{color:c}}>{s.name}</span>}
+                  {l&&!l.cancelled&&<div
+                    className={`slot-logged ${l.logged?"checked":""}`}
+                    onClick={(e)=>toggleLogged(d,time,e)}
+                    title={l.logged?"Registrata sul server":"Da registrare"}>
+                    <span dangerouslySetInnerHTML={{__html:IC.check}}/>
+                  </div>}
+                </div>
+              })}
+            </React.Fragment>
+          })}
+        </div>
+      </div>
+    </div>}
+
+    {/* ═══ STUDENTS ═══ */}
+    {tab==="students"&&<div style={{maxWidth:800,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <h2 style={{fontSize:16,fontWeight:600}}>Anagrafica studenti</h2>
+        <button className="btn btn-primary btn-sm" onClick={addStu}><Ic name="plus"/> Nuovo</button>
+      </div>
+      {students.sort((a,b)=>a.name.localeCompare(b.name)).map(s=><div key={s.id} className="student-card">
+        {editStu===s.id?
+          <div style={{padding:14}}>
+            <div style={{display:"grid",gridTemplateColumns:isMob?"1fr":"1fr 1fr",gap:6,marginBottom:10}}>
+              <div><label style={{fontSize:10,color:"#666"}}>Nome</label><input className="input" value={stuForm.name||""} onChange={e=>setStuForm(f=>({...f,name:e.target.value}))}/></div>
+              <div><label style={{fontSize:10,color:"#666"}}>Famiglia</label><input className="input" value={stuForm.family||""} onChange={e=>setStuForm(f=>({...f,family:e.target.value}))}/></div>
+              <div><label style={{fontSize:10,color:"#666"}}>Materie</label><input className="input" value={stuForm.subjects||""} onChange={e=>setStuForm(f=>({...f,subjects:e.target.value}))}/></div>
+              <div><label style={{fontSize:10,color:"#666"}}>€/h</label><input className="input" type="number" step="0.5" value={stuForm.rate||""} onChange={e=>setStuForm(f=>({...f,rate:parseFloat(e.target.value)||0}))}/></div>
+              <div style={{gridColumn:isMob?"1":"1/-1"}}><label style={{fontSize:10,color:"#666"}}>Link Meet</label><input className="input" value={stuForm.meet||""} onChange={e=>setStuForm(f=>({...f,meet:e.target.value}))}/></div>
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <button className="btn btn-primary btn-sm" onClick={saveStu}><Ic name="check"/> Salva</button>
+              <button className="btn btn-ghost btn-sm" onClick={()=>setEditStu(null)}>Annulla</button>
+              <button className="btn btn-danger btn-sm" onClick={()=>delStu(s.id)} style={{marginLeft:"auto"}}><Ic name="trash"/> Elimina</button>
+            </div>
+          </div>
+        :
+          <div className="student-row" onClick={()=>startEdit(s)}>
+            <div className="avatar" style={{width:30,height:30,background:color(s.id),fontSize:13,color:"#1a1d2e"}}>{s.name.charAt(0)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontSize:13,fontWeight:500}}>{s.name} {s.family&&<span style={{fontSize:10,color:"#666",fontWeight:400}}>({s.family})</span>}</div>
+              <div style={{fontSize:10,color:"#666",display:"flex",gap:6,marginTop:1}}>{s.subjects&&<span>{s.subjects}</span>}<span style={{color:"#4a6cf7"}}>€{s.rate}/h</span></div>
+            </div>
+            {s.meet&&<a href={s.meet.startsWith("http")?s.meet:`https://${s.meet}`} target="_blank" rel="noopener" onClick={e=>e.stopPropagation()} style={{color:"#4a6cf7",padding:4,flexShrink:0}}><Ic name="vid"/></a>}
+          </div>
+        }
+      </div>)}
+    </div>}
+
+    {/* ═══ EXTRA WORK ═══ */}
+    {tab==="extra"&&<div style={{maxWidth:600,margin:"0 auto"}}>
+      <h2 style={{fontSize:16,fontWeight:600,marginBottom:12}}>Ore secondo lavoro</h2>
+      <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:10,padding:14,marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:500,marginBottom:8}}>Aggiungi ore</div>
+        <div style={{display:"grid",gridTemplateColumns:isMob?"1fr":"1fr 80px 1fr auto",gap:6,alignItems:"end"}}>
+          <div><label style={{fontSize:10,color:"#666"}}>Data</label><input className="input" type="date" value={newExtra.date} onChange={e=>setNewExtra(f=>({...f,date:e.target.value}))}/></div>
+          <div><label style={{fontSize:10,color:"#666"}}>Ore</label><input className="input" type="number" step="0.5" min="0" value={newExtra.hours} onChange={e=>setNewExtra(f=>({...f,hours:e.target.value}))} placeholder="0"/></div>
+          <div><label style={{fontSize:10,color:"#666"}}>Nota</label><input className="input" value={newExtra.note} onChange={e=>setNewExtra(f=>({...f,note:e.target.value}))} placeholder="Opzionale"/></div>
+          <button className="btn btn-primary btn-sm" onClick={addExtra}><Ic name="plus"/> Aggiungi</button>
+        </div>
+      </div>
+      {Object.entries(extraWork).sort(([a],[b])=>b.localeCompare(a)).map(([ds,entries])=>entries.map((en,i)=>{
+        const[y,m,d]=ds.split("-").map(Number);
+        return <div key={`${ds}-${i}`} className="extra-row">
+          <span style={{fontSize:11,color:"#888",fontFamily:"'JetBrains Mono',monospace",minWidth:70}}>{d}/{m}/{y}</span>
+          <span style={{fontSize:13,fontWeight:600,minWidth:35}}>{en.hours}h</span>
+          <span style={{flex:1,fontSize:11,color:"#666"}}>{en.note}</span>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>rmExtra(ds,i)}><Ic name="trash"/></button>
+        </div>
+      }))}
+      {!Object.keys(extraWork).length&&<div style={{textAlign:"center",padding:30,color:"#555",fontSize:12}}>Nessuna ora registrata.</div>}
+    </div>}
+
+    {/* ═══ SUMMARY ═══ */}
+    {tab==="summary"&&<div style={{maxWidth:600,margin:"0 auto"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+        <h2 style={{fontSize:16,fontWeight:600}}>Riepilogo fatturazione</h2>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>setSumMonth(p=>p.m===0?{y:p.y-1,m:11}:{y:p.y,m:p.m-1})}><Ic name="left"/></button>
+          <span style={{fontSize:13,fontWeight:500,minWidth:130,textAlign:"center"}}>{MONTHS[sumMonth.m]} {sumMonth.y}</span>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>setSumMonth(p=>p.m===11?{y:p.y+1,m:0}:{y:p.y,m:p.m+1})}><Ic name="right"/></button>
+        </div>
+      </div>
+      <div style={{fontSize:11,color:"#666",marginBottom:14,textAlign:"right"}}>Periodo: {billingLabel}</div>
+
+      <div className="stat-grid">
+        {[{l:"Ore lezioni",v:summary.hrs+"h",c:"#4a6cf7"},{l:"Studenti attivi",v:summary.nCli,c:"#7c5cf7"},{l:"Lezioni annullate",v:summary.cancelled,c:"#e74c4c"},{l:"Ore altro lavoro",v:summary.extraH+"h",c:"#f0a050"}].map(({l,v,c})=>
+          <div key={l} className="stat-card" style={{"--accent":c}}><div className="stat-label">{l}</div><div className="stat-value">{v}</div></div>
+        )}
+      </div>
+
+      {/* ── Earnings card ── */}
+      <div style={{background:"linear-gradient(135deg,rgba(74,108,247,.1),rgba(124,92,247,.1))",border:"1px solid rgba(74,108,247,.2)",borderRadius:10,padding:16,marginBottom:14}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:10}}>Importo periodo</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:12,color:"#aaa"}}>Lezioni ({summary.hrs}h)</span>
+            <span style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace"}}>€{summary.earnings.toFixed(2)}</span>
+          </div>
+          {summary.bonus&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:12,color:"#aaa"}}>Premio orario ({summary.hrs}h × €0,50)</span>
+            <span style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#4ade80"}}>+€{summary.bAmt.toFixed(2)}</span>
+          </div>}
+          {summary.extraH>0&&<div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:12,color:"#aaa"}}>Altro lavoro ({summary.extraH}h)</span>
+            <span style={{fontSize:14,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#f0a050"}}>a parte</span>
+          </div>}
+          <div style={{borderTop:"1px solid rgba(255,255,255,.1)",paddingTop:8,marginTop:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <span style={{fontSize:13,fontWeight:600}}>Totale lezioni</span>
+            <span style={{fontSize:20,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:"#7c9cff"}}>€{summary.totalEarn.toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Registration status */}
+      <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:10,padding:14,marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+        <Ic name="server"/>
+        <div style={{flex:1}}>
+          <div style={{fontSize:13,fontWeight:500}}>Registrazioni sul server</div>
+          <div style={{fontSize:11,color:"#888"}}>Ore segnate come registrate</div>
+        </div>
+        <div style={{fontSize:18,fontWeight:700,fontFamily:"'JetBrains Mono',monospace",color:summary.logged===summary.slots&&summary.slots>0?"#4ade80":"#f0a050"}}>
+          {summary.logged}/{summary.slots}
+        </div>
+      </div>
+
+      {/* Bonus */}
+      <div className="bonus-card" style={{background:summary.bonus?"rgba(74,108,247,.08)":"rgba(255,255,255,.03)",border:`1px solid ${summary.bonus?"rgba(74,108,247,.2)":"rgba(255,255,255,.06)"}`}}>
+        <div style={{fontSize:13,fontWeight:600,marginBottom:6}}>Premio orario (+€0,50/h)</div>
+        <div style={{fontSize:11,color:"#888",marginBottom:10}}>Requisiti: ≥60 ore + ≥6 studenti nel periodo</div>
+        <div style={{display:"flex",gap:14,flexWrap:"wrap"}}>
+          <div><span style={{fontSize:11,color:"#666"}}>Ore: </span><span style={{fontSize:12,fontWeight:600,color:summary.hrs>=60?"#4ade80":"#e74c4c"}}>{summary.hrs}/60 {summary.hrs>=60?"✓":"✗"}</span></div>
+          <div><span style={{fontSize:11,color:"#666"}}>Studenti: </span><span style={{fontSize:12,fontWeight:600,color:summary.nCli>=6?"#4ade80":"#e74c4c"}}>{summary.nCli}/6 {summary.nCli>=6?"✓":"✗"}</span></div>
+        </div>
+        {summary.bonus&&<div style={{marginTop:10,fontSize:14,fontWeight:700,color:"#4ade80"}}>Premio maturato: +€{summary.bAmt.toFixed(2)}</div>}
+      </div>
+
+      {/* Per student */}
+      <div style={{background:"rgba(255,255,255,.03)",border:"1px solid rgba(255,255,255,.06)",borderRadius:10,overflow:"hidden"}}>
+        <div style={{padding:"12px 14px",fontSize:12,fontWeight:600,borderBottom:"1px solid rgba(255,255,255,.06)"}}>Dettaglio per studente</div>
+        {Object.entries(summary.sSlots).sort(([,a],[,b])=>b-a).map(([sid,sl])=>{
+          const st=getS(parseInt(sid));if(!st)return null;const hrs=sl*.5;const earn=hrs*st.rate;
+          return <div key={sid} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",borderBottom:"1px solid rgba(255,255,255,.03)"}}>
+            <div className="avatar" style={{width:22,height:22,background:color(st.id),fontSize:9,color:"#1a1d2e"}}>{st.name.charAt(0)}</div>
+            <div style={{flex:1,fontSize:12}}>{st.name}</div>
+            <div style={{fontSize:11,color:"#666",fontFamily:"'JetBrains Mono',monospace",marginRight:6}}>{hrs}h</div>
+            <div style={{fontSize:12,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",color:"#bbb"}}>€{earn.toFixed(0)}</div>
+          </div>
+        })}
+        {!Object.keys(summary.sSlots).length&&<div style={{padding:20,textAlign:"center",color:"#555",fontSize:12}}>Nessuna lezione registrata per questo periodo.</div>}
+      </div>
+    </div>}
+
+    </div>{/* end content */}
+
+    {/* ═══ MODALS ═══ */}
+
+    {/* Student picker */}
+    {picker&&<div className="modal-overlay" onClick={()=>{setPicker(false);setSearch("")}}>
+      <div className="modal" onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+          <h3 style={{fontSize:14,fontWeight:600}}>Aggiungi lezione</h3>
+          <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>{setPicker(false);setSearch("")}}><Ic name="x"/></button>
+        </div>
+        {selSlot&&<div style={{fontSize:11,color:"#888",marginBottom:10}}>
+          {DAYS_F[weekDates.findIndex(d=>dk(d)===dk(selSlot.date))]} {selSlot.date.getDate()} {MONTHS[selSlot.date.getMonth()]} — {selSlot.time}
+        </div>}
+        <input className="input" placeholder="Cerca studente..." value={search} onChange={e=>setSearch(e.target.value)} autoFocus style={{marginBottom:10}}/>
+        <div style={{maxHeight:280,overflowY:"auto"}}>
+          {filteredStu.map(s=><button key={s.id} className="picker-item" onClick={()=>addLesson(s.id)}>
+            <div className="avatar" style={{width:26,height:26,background:color(s.id),fontSize:11,color:"#1a1d2e"}}>{s.name.charAt(0)}</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:500}}>{s.name}</div>
+              {s.subjects&&<div style={{fontSize:10,color:"#666",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.subjects}</div>}
+            </div>
+          </button>)}
+        </div>
+      </div>
+    </div>}
+
+    {/* Slot detail */}
+    {detail&&<div className="modal-overlay" onClick={()=>setDetail(null)}>
+      <div className="modal" onClick={e=>e.stopPropagation()} style={{maxWidth:340}}>
+        {(()=>{
+          const{date,time,lesson}=detail;const st=getS(lesson.studentId);if(!st)return null;const c=color(st.id);
+          const di=weekDates.findIndex(d=>dk(d)===dk(date));
+          return <>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"start",marginBottom:12}}>
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <div className="avatar" style={{width:34,height:34,background:c,fontSize:15,color:"#1a1d2e"}}>{st.name.charAt(0)}</div>
+                <div><div style={{fontSize:15,fontWeight:600}}>{st.name}</div>{st.family&&<div style={{fontSize:11,color:"#888"}}>{st.family}</div>}</div>
+              </div>
+              <button className="btn btn-ghost btn-icon btn-sm" onClick={()=>setDetail(null)}><Ic name="x"/></button>
+            </div>
+            <div style={{fontSize:11,color:"#888",marginBottom:12,display:"flex",alignItems:"center",gap:4}}>
+              <Ic name="clock"/>{di>=0?DAYS_F[di]:""} {date.getDate()} {MONTHS[date.getMonth()]} — {time}
+            </div>
+            {st.subjects&&<div className="detail-row"><span>Materie: </span>{st.subjects}</div>}
+            <div className="detail-row"><span>Tariffa: </span>€{st.rate}/h</div>
+            {st.meet&&<a className="meet-link" href={st.meet.startsWith("http")?st.meet:`https://${st.meet}`} target="_blank" rel="noopener"><Ic name="vid"/> Apri Google Meet</a>}
+
+            {/* Logged status */}
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 0",cursor:"pointer"}} onClick={()=>toggleLogged(date,time)}>
+              <div className={`slot-logged ${lesson.logged?"checked":""}`} style={{width:20,height:20}}>
+                <span dangerouslySetInnerHTML={{__html:IC.check}}/>
+              </div>
+              <span style={{fontSize:12,color:lesson.logged?"#4ade80":"#888"}}>
+                {lesson.logged?"Registrata sul server":"Non ancora registrata"}
+              </span>
+            </div>
+
+            {lesson.cancelled&&<div style={{display:"inline-flex",padding:"3px 8px",borderRadius:5,background:"rgba(231,76,76,.15)",color:"#e74c4c",fontSize:11,fontWeight:600,marginBottom:8}}>Annullata</div>}
+            <div className="modal-actions">
+              <button className="btn btn-ghost btn-sm" style={{flex:1}} onClick={()=>toggleCancel(date,time)}>
+                {lesson.cancelled?<><Ic name="check"/> Ripristina</>:<><Ic name="x"/> Annulla</>}
+              </button>
+              <button className="btn btn-danger btn-sm" onClick={()=>removeLesson(date,time)}><Ic name="trash"/> Elimina</button>
+            </div>
+          </>
+        })()}
+      </div>
+    </div>}
+  </div>)
+}
+
+ReactDOM.render(<App/>,document.getElementById("app"));
+</script>
+</body>
+</html>
